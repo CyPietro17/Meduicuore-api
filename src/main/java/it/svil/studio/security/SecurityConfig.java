@@ -52,7 +52,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http.csrf().disable().cors().and().antMatcher("/register")
+        return http.csrf().disable().cors().and()
                 .authorizeHttpRequests().mvcMatchers("/register", "/login", "/auth", "/role").permitAll().and()
                 .authorizeHttpRequests().mvcMatchers(AUTH_LIST).permitAll().and()
                 .authorizeHttpRequests().mvcMatchers("/reparti/nuovo", "/impiegati/aggiungi", "/impiegati/dimissione").hasAuthority("ADMIN").and()
@@ -65,7 +65,7 @@ public class SecurityConfig {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         corsConfiguration.setAllowCredentials(true);
         corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        corsConfiguration.setAllowedOrigins(Arrays.asList("https://medicuore.vercel.app"));
+        corsConfiguration.setAllowedOrigins(Arrays.asList("https://medicuore.vercel.app", "http://localhost:4200"));
         corsConfiguration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
                 "Accept", "Authorization", "Origin, Accept", "X-Requested-With",
                 "Access-Control-Request-Method", "Access-Control-Request-Headers"));
