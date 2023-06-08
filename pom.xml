@@ -11,7 +11,7 @@
 	<groupId>it.svil</groupId>
 	<artifactId>studio</artifactId>
 	<version>1.0</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<name>studio</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
