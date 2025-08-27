@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.pietro.salvatore.medicuore.mappers.RicoveroMapper">
+    <resultMap id="ricoveriMap" type="ricoveri">
+        <id property="n_id" javaType="Long" column="ricovero_id"/>
+        <result property="d_inizioRicovero" javaType="Date" column="ricovero_inizio"/>
+        <result property="d_fineRicovero" javaType="Date" column="ricovero_fine"/>
+        <association property="n_paziente" javaType="pazienti"
+                     column="paziente_id" select="it.pietro.salvatore.medicuore.mappers.PazienteMapper.findById"/>
+        <association property="t_reparto" javaType="reparti"
+                     column="ricovero_reparto" select="it.pietro.salvatore.medicuore.mappers.RepartoMapper.findByName"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="ricoveriMap">
+        SELECT *
+        FROM public."ricoveri"
+    </select>
+
+    <select id="findById" resultMap="ricoveriMap">
+        SELECT *
+        FROM public."ricoveri"
+        WHERE ricovero_id = #{n_id}
+    </select>
+
+    <insert id="save" parameterType="ricoveri" keyProperty="n_id" keyColumn="ricovero_id">
+        INSERT INTO public."ricoveri"
+            ("ricovero_inizio", "paziente_id", "ricovero_reparto")
+        VALUES (#{d_inizioRicovero}, #{n_paziente.n_id}, #{t_reparto.t_nome});
+    </insert>
+
+    <update id="update">
+        UPDATE public."ricoveri"
+        <set>
+            <if test="ricovero.d_fineRicovero != null">
+                ricovero_fine = #{ricovero.d_fineRicovero}
+            </if>
+        </set>
+        WHERE ricovero_id = #{id};
+    </update>
+</mapper>

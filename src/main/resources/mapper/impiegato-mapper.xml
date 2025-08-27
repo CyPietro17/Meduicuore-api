@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.pietro.salvatore.medicuore.mappers.ImpiegatoMapper">
+    <resultMap id="impiegatoMap" type="it.pietro.salvatore.medicuore.entity.Impiegato">
+        <id property="n_id" javaType="Long" column="impiegato_id"/>
+        <result property="t_nome" javaType="String" column="impiegato_nome"/>
+        <result property="t_cognome" javaType="String" column="impiegato_cognome"/>
+        <result property="d_dataNascita" javaType="Date" column="impiegato_nascita"/>
+        <result property="t_codiceFiscale" javaType="String" column="impiegato_cf"/>
+        <result property="t_professione" javaType="String" column="imp_professione"/>
+        <result property="b_active" javaType="String" column="impiegato_stato_assunzione"/>
+        <association property="t_reparto" javaType="reparti"
+                     column="impiegato_reparto"
+                     select="it.pietro.salvatore.medicuore.mappers.RepartoMapper.findByName"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="impiegatoMap">
+        SELECT *
+        FROM public."impiegati" AS imp
+                 LEFT JOIN public."reparti" AS rep ON
+            rep.reparto_nome = imp.impiegato_reparto;
+    </select>
+
+    <select id="findAllAssunti" resultMap="impiegatoMap">
+        SELECT *
+        FROM public."impiegati" AS imp
+                 INNER JOIN public."reparti" AS rep ON
+            rep.reparto_nome = imp.impiegato_reparto;
+    </select>
+
+    <select id="findAllDimessi" resultMap="impiegatoMap">
+        SELECT *
+        FROM public."impiegati"
+        WHERE impiegato_stato_assunzione = 'NO'
+    </select>
+
+    <select id="findById" resultMap="impiegatoMap">
+        SELECT *
+        FROM public."impiegati" AS imp
+                 INNER JOIN public."reparti" AS rep ON
+            rep.reparto_nome = imp.impiegato_reparto
+        WHERE imp.impiegato_id = #{n_id};
+    </select>
+
+    <insert id="save" parameterType="it.pietro.salvatore.medicuore.entity.Impiegato" keyProperty="n_id"
+            keyColumn="impiegato_id">
+        INSERT INTO public."impiegati"
+        ("impiegato_nome", "impiegato_cognome", "impiegato_nascita", "impiegato_cf", "imp_professione",
+         "impiegato_stato_assunzione", "impiegato_reparto")
+        VALUES (#{t_nome}, #{t_cognome}, #{d_dataNascita}, #{t_codiceFiscale}, #{t_professione}, #{b_active},
+                #{t_reparto.t_nome})up
+    </insert>
+
+    <update id="update">
+        UPDATE public."impiegati"
+        <set>
+            <if test="impiegato.b_active != null">
+                impiegato_reparto = NULL,
+                impiegato_stato_assunzione = #{impiegato.b_active}
+            </if>
+        </set>
+        WHERE impiegato_id = #{id}
+    </update>
+
+    <select id="filterImpiegatiAssunti" resultMap="impiegatoMap"
+            parameterType="it.pietro.salvatore.medicuore.dto.request.ImpiegatoRequestDto">
+        SELECT * FROM public."impiegati"
+        WHERE impiegato_stato_assunzione = 'SI'
+        <if test="impiegato.t_nome != null">
+            AND impiegato_nome ILIKE '%' || #{impiegato.t_nome} || '%'
+        </if>
+        <if test="impiegato.t_cognome != null">
+            AND impiegato_cognome ILIKE '%' || #{impiegato.t_cognome} || '%'
+        </if>
+        <if test="impiegato.d_dataNascita != null">
+            AND impiegato_nascita = #{impiegato.d_dataNascita}
+        </if>
+        <if test="impiegato.t_codiceFiscale != null">
+            AND impiegato_cf ILIKE '%' || #{impiegato.t_codiceFiscale} || '%'
+        </if>
+        <if test="impiegato.t_professione != null">
+            AND imp_professione ILIKE '%' || #{impiegato.t_professione} || '%'
+        </if>
+    </select>
+
+    <select id="filterImpiegatiDimessi" resultMap="impiegatoMap"
+            parameterType="it.pietro.salvatore.medicuore.dto.request.ImpiegatoRequestDto">
+        SELECT * FROM public."impiegati"
+        WHERE impiegato_stato_assunzione = 'NO'
+        <if test="impiegato.t_nome != null">
+            AND impiegato_nome ILIKE '%' || #{impiegato.t_nome} || '%'
+        </if>
+        <if test="impiegato.t_cognome != null">
+            AND impiegato_cognome ILIKE '%' || #{impiegato.t_cognome} || '%'
+        </if>
+        <if test="impiegato.d_dataNascita != null">
+            AND impiegato_nascita = #{impiegato.d_dataNascita}
+        </if>
+        <if test="impiegato.t_codiceFiscale != null">
+            AND impiegato_cf ILIKE '%' || #{impiegato.t_codiceFiscale} || '%'
+        </if>
+        <if test="impiegato.t_professione != null">
+            AND imp_professione ILIKE '%' || #{impiegato.t_professione} || '%'
+        </if>
+    </select>
+</mapper>

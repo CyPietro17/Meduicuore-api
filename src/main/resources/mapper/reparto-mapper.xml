@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.pietro.salvatore.medicuore.mappers.RepartoMapper">
+    <resultMap id="repartiMap" type="it.pietro.salvatore.medicuore.entity.Reparto">
+        <id property="n_id" javaType="Long" column="reparto_id"/>
+        <result property="t_nome" javaType="String" column="reparto_nome"/>
+        <result property="n_postiLettoEffettivi" javaType="Integer" column="posti_letto_effettivi"/>
+        <result property="n_postiLettoDisponibili" javaType="Integer" column="posti_letto_disponibili"/>
+        <result property="b_postiLiberi" javaType="String" column="posti_liberi"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="repartiMap">
+        SELECT *
+        FROM public."reparti";
+    </select>
+
+    <select id="findById" resultMap="repartiMap">
+        SELECT *
+        FROM public."reparti"
+        WHERE reparto_id = #{n_id}
+    </select>
+
+    <select id="findByName" resultMap="repartiMap">
+        SELECT *
+        FROM public."reparti"
+        WHERE reparto_nome = #{t_nome}
+    </select>
+
+    <update id="update">
+        UPDATE public."reparti"
+        <set>
+            <if test="reparto.b_postiLiberi != null">
+                posti_letto_disponibili = #{reparto.n_postiLettoDisponibili},
+                posti_liberi = #{reparto.b_postiLiberi}
+            </if>
+        </set>
+        WHERE reparto_id = #{id}
+    </update>
+
+    <insert id="save" parameterType="reparti" keyProperty="n_id" keyColumn="reparto_id">
+        INSERT INTO public."reparti"
+        ("reparto_nome", "posti_letto_effettivi", "posti_letto_disponibili", "posti_liberi")
+        VALUES (#{t_nome}, #{n_postiLettoEffettivi}, #{n_postiLettoDisponibili}, #{b_postiLiberi});
+    </insert>
+
+    <select id="filterReparti" resultMap="repartiMap">
+        SELECT * FROM public."reparti"
+        <if test="reparto.t_nome != null">
+            WHERE reparto_nome LIKE '%' || #{t_nome} || '%'
+        </if>
+    </select>
+</mapper>

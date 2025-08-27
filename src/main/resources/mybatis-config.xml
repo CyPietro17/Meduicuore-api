@@ -1,0 +1,26 @@
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "HTTP://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="cacheEnabled" value="false"/>
+        <setting name="useGeneratedKeys" value="true"/>
+        <setting name="defaultExecutorType" value="REUSE"/>
+        <setting name="aggressiveLazyLoading" value="false"/>
+
+        <setting name="lazyLoadingEnabled" value="false"/>
+        <setting name="lazyLoadTriggerMethods" value=""/>
+        <setting name="mapUnderscoreToCamelCase" value="false"/>
+        <setting name="jdbcTypeForNull" value="NULL"/>
+
+        <setting name="logImpl" value="LOG4J2"/>
+    </settings>
+
+    <typeAliases>
+        <package name="it.pietro.salvatore.medicuore.entity.Paziente"/>
+        <package name="it.pietro.salvatore.medicuore.entity.Impiegato"/>
+        <package name="it.pietro.salvatore.medicuore.entity.Reparto"/>
+        <package name="it.pietro.salvatore.medicuore.entity.Ricovero"/>
+        <package name="it.pietro.salvatore.medicuore.entity.MyUser"/>
+    </typeAliases>
+
+
+</configuration>

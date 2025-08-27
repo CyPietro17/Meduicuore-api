@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.pietro.salvatore.medicuore.mappers.PazienteMapper">
+    <resultMap id="pazienteMap" type="it.pietro.salvatore.medicuore.entity.Paziente">
+        <id property="n_id" javaType="Long" column="paziente_id"/>
+        <result property="t_nome" javaType="String" column="paziente_nome"/>
+        <result property="t_cognome" javaType="String" column="paziente_cognome"/>
+        <result property="d_dataNascita" javaType="Date" column="paziente_nascita"/>
+        <result property="t_codiceFiscale" javaType="String" column="paziente_cf"/>
+        <result property="b_ricoverato" javaType="String" column="paziente_ricoverato"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="pazienteMap">
+        SELECT *
+        FROM public."pazienti";
+    </select>
+
+    <select id="findById" resultMap="pazienteMap">
+        SELECT *
+        FROM public."pazienti"
+        WHERE paziente_id = #{n_id};
+    </select>
+
+    <insert id="save" parameterType="it.pietro.salvatore.medicuore.entity.Paziente" keyProperty="n_id"
+            keyColumn="paziente_id">
+        INSERT INTO public."pazienti"
+        ("paziente_nome", "paziente_cognome", "paziente_nascita", "paziente_cf", "paziente_ricoverato")
+        VALUES (#{t_nome}, #{t_cognome}, #{d_dataNascita}, #{t_codiceFiscale}, #{b_ricoverato});
+    </insert>
+
+    <update id="update">
+        UPDATE public."pazienti"
+        <set>
+            <if test="paziente.b_ricoverato">
+                paziente_ricoverato = #{paziente.b_ricoverato}
+            </if>
+        </set>
+        WHERE paziente_id = #{paziente.n_id}
+    </update>
+
+</mapper>
