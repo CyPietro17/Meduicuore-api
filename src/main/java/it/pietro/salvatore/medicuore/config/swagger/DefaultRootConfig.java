@@ -4,16 +4,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Web MVC Configuration.
+ * Redirects the application root to the Swagger UI page.
+ */
 @Configuration
 public class DefaultRootConfig implements WebMvcConfigurer {
 
   /**
-   * Shows Swagger page on default route on startup.
+   * Redirects the root URL (/) to the Swagger UI page.
    *
-   * @param registry view's registry.
+   * @param registry view controller registry
    */
   @Override
   public void addViewControllers(ViewControllerRegistry registry) {
-    registry.addRedirectViewController("/", "/medicuore-swagger-ui.html");
+    registry.addRedirectViewController("/", "/swagger-ui.html");
   }
 }

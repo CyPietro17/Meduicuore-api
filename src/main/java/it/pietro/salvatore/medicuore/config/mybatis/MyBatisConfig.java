@@ -23,16 +23,16 @@ public class MyBatisConfig {
   public static final String CONFIG_FILE_NAME = "mybatis-config.xml";
   public static final String MAPPER_LOCATION = "classpath*:**/*-mapper.xml";
 
-  @Value(value = "${spring.datasource.driverClassName}")
+  @Value("${spring.datasource.driver-class-name}")
   private String dataSourceDriverClassName;
 
-  @Value(value = "${spring.datasource.url}")
+  @Value("${spring.datasource.url}")
   private String dataSourceUrl;
 
-  @Value(value = "${spring.datasource.username}")
+  @Value("${spring.datasource.username}")
   private String dataSourceUsername;
 
-  @Value(value = "${spring.datasource.password}")
+  @Value("${spring.datasource.password}")
   private String dataSourcePassword;
 
   @Bean
@@ -68,8 +68,8 @@ public class MyBatisConfig {
 
   @Bean
   @Primary
-  public MapperFactoryBean<ImpiegatoMapper> mapperImpiegati() throws Exception {
-    MapperFactoryBean<ImpiegatoMapper> factoryBeanFieldMapper = new MapperFactoryBean<>(ImpiegatoMapper.class);
+  public MapperFactoryBean<EmployeeMapper> mapperImpiegati() throws Exception {
+    MapperFactoryBean<EmployeeMapper> factoryBeanFieldMapper = new MapperFactoryBean<>(EmployeeMapper.class);
     factoryBeanFieldMapper.setSqlSessionFactory(sqlSessionFactoryBeanFieldMapper());
     return factoryBeanFieldMapper;
   }
