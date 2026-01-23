@@ -6,18 +6,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import it.pietro.salvatore.medicuore.config.security.jwt.JWTService;
-import it.pietro.salvatore.medicuore.dto.jwt.JwtAuthResponse;
-import it.pietro.salvatore.medicuore.dto.request.LoginRequest;
-import it.pietro.salvatore.medicuore.dto.request.RefreshTokenRequest;
+import it.pietro.salvatore.medicuore.dto.jwt.JwtAuthResponseDto;
+import it.pietro.salvatore.medicuore.dto.request.LoginRequestDto;
+import it.pietro.salvatore.medicuore.dto.request.RefreshTokenRequestDto;
 import it.pietro.salvatore.medicuore.dto.response.ErrorResponse;
-import it.pietro.salvatore.medicuore.dto.response.LogoutResponse;
-import it.pietro.salvatore.medicuore.dto.response.ResponseDto;
-import it.pietro.salvatore.medicuore.dto.response.UserInfoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,29 +23,28 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-import static it.pietro.salvatore.medicuore.utils.HttpResponseStatus.*;
-
 /**
- * Controller per la gestione dell'autenticazione JWT.
+ * Controller for JWT authentication management.
  * <p>
  * Endpoints:
- * - POST /auth/login - Autenticazione con username/password
- * - POST /auth/refresh - Rinnovo access token tramite refresh token
- * - POST /auth/logout - Logout (client-side, invalida token)
- * - GET /auth/me - Informazioni utente autenticato
- * <p>
- * Utilizza JWT per l'autenticazione stateless.
+ * - POST /auth/login - Authentication with username/password
+ * - POST /auth/refresh - Access token renewal via refresh token
+ * - POST /auth/logout - Logout (client-side, invalidates token)
+ * - GET /auth/me - Authenticated user information
  */
 @Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Endpoint per autenticazione e gestione token JWT")
+@Tag(name = "Authentication", description = "Endpoints for authentication and JWT token management")
 public class AuthController {
 
   private final AuthenticationManager authenticationManager;
@@ -55,174 +52,131 @@ public class AuthController {
   private final UserDetailsService userDetailsService;
 
   /**
-   * Endpoint di login.
-   * Autentica l'utente con username e password, e restituisce access token e refresh token.
+   * Login endpoint.
+   * Authenticates the user with username and password, and returns access token and refresh token.
    *
-   * @param loginRequest credenziali di login (username e password)
-   * @return JWT access token e refresh token con informazioni utente
+   * @param loginRequestDto login credentials (username and password)
+   * @return JWT access token and refresh token with user information
    */
   @PostMapping("/login")
   @Operation(summary = "User Login",
     description = "Authenticate the user through username and password. Return access token and refresh token.")
   @ApiResponse(responseCode = "200", description = "Authentication success",
-    content = @Content(schema = @Schema(implementation = JwtAuthResponse.class)))
+    content = @Content(schema = @Schema(implementation = JwtAuthResponseDto.class)))
   @ApiResponse(responseCode = "401", description = "Invalid credential",
     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   @ApiResponse(responseCode = "400", description = "Invalid request (missing fields)",
     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-  public ResponseEntity<ResponseDto> login(@Validated @RequestBody LoginRequest loginRequest) {
-    try {
-      log.info("Attempting login for user: {}", loginRequest.getUsername());
+  public ResponseEntity<JwtAuthResponseDto> login(@Validated @RequestBody LoginRequestDto loginRequestDto) {
+    log.info("Attempting login for user: {}", loginRequestDto.getUsername());
 
-      // 1. Autentica con username e password
-      Authentication authentication = authenticationManager.authenticate(
-        new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+    // 1. Authenticate with username and password
+    Authentication authentication = authenticationManager.authenticate(
+      new UsernamePasswordAuthenticationToken(loginRequestDto.getUsername(), loginRequestDto.getPassword()));
 
-      // 2. Imposta l'autenticazione nel SecurityContext
-      SecurityContextHolder.getContext().setAuthentication(authentication);
+    // 2. Set authentication in SecurityContext
+    SecurityContextHolder.getContext().setAuthentication(authentication);
 
-      // 3. Carica i dettagli dell'utente
-      UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getUsername());
+    // 3. Load user details
+    UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequestDto.getUsername());
 
-      // 4. Genera access token e refresh token
-      String accessToken = jwtService.generateAccessToken(userDetails);
-      String refreshToken = jwtService.generateRefreshToken(userDetails);
+    // 4. Generate access token and refresh token
+    String accessToken = jwtService.generateAccessToken(userDetails);
+    String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-      // 5. Costruisci la risposta
-      JwtAuthResponse response = JwtAuthResponse.builder()
-                                   .accessToken(accessToken)
-                                   .refreshToken(refreshToken)
-                                   .tokenType("Bearer")
-                                   .username(userDetails.getUsername())
-                                   .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
-                                   .accessTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
-                                   .refreshTokenExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS))
-                                   .build();
+    // 5. Build response
+    JwtAuthResponseDto response = JwtAuthResponseDto.builder()
+                                    .accessToken(accessToken)
+                                    .refreshToken(refreshToken)
+                                    .tokenType("Bearer")
+                                    .username(userDetails.getUsername())
+                                    .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
+                                    .accessTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
+                                    .refreshTokenExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS))
+                                    .build();
 
-      log.info("Login successful for user: {}", loginRequest.getUsername());
-      return ResponseEntity.ok(response);
+    log.info("Login successful for user: {}", loginRequestDto.getUsername());
+    return ResponseEntity.ok(response);
 
-    } catch (BadCredentialsException e) {
-      log.warn("Failed login attempt for user: {} - Invalid credentials", loginRequest.getUsername());
-      return ResponseEntity.status(UNAUTHORIZED_STATUS)
-               .body(ErrorResponse.builder()
-                       .status(UNAUTHORIZED_STATUS.value())
-                       .error(UNAUTHORIZED_STATUS.getReasonPhrase())
-                       .message("Username o password non validi")
-                       .timestamp(Instant.now())
-                       .build());
-    } catch (Exception e) {
-      log.error("Error during login for user: {}", loginRequest.getUsername(), e);
-      return ResponseEntity.internalServerError()
-               .body(ErrorResponse.builder()
-                       .status(INTERNAL_SERVER_ERROR_STATUS.value())
-                       .error(INTERNAL_SERVER_ERROR_STATUS.getReasonPhrase())
-                       .message("Errore durante l'autenticazione")
-                       .timestamp(Instant.now())
-                       .build());
-    }
   }
 
   /**
-   * Endpoint per rinnovare l'access token usando il refresh token.
-   * Quando l'access token scade (dopo 15 min), usa questo endpoint per ottenerne uno nuovo
-   * senza dover rifare il login.
+   * Endpoint to renew the access token using the refresh token.
+   * When the access token expires (after 15 min), use this endpoint to get a new one
+   * without having to log in again.
    *
-   * @param refreshRequest contiene il refresh token
-   * @return nuovo access token (il refresh token rimane lo stesso)
+   * @param refreshRequest contains the refresh token
+   * @return new access token (the refresh token remains the same)
    */
   @PostMapping("/refresh")
-  @Operation(summary = "Rinnova access token",
-    description = "Genera un nuovo access token usando il refresh token. Il refresh token rimane valido.")
-  @ApiResponse(responseCode = "200", description = "Token rinnovato con successo",
-    content = @Content(schema = @Schema(implementation = JwtAuthResponse.class)))
-  @ApiResponse(responseCode = "401", description = "Refresh token non valido o scaduto",
+  @Operation(summary = "Renew access token",
+    description = "Generates a new access token using the refresh token. The refresh token remains valid.")
+  @ApiResponse(responseCode = "200", description = "Token renewed successfully",
+    content = @Content(schema = @Schema(implementation = JwtAuthResponseDto.class)))
+  @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token",
     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-  @ApiResponse(responseCode = "400", description = "Token non è un refresh token",
+  @ApiResponse(responseCode = "400", description = "Token is not a refresh token",
     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-  public ResponseEntity<ResponseDto> refreshToken(@Validated @RequestBody RefreshTokenRequest refreshRequest) {
-    try {
-      String refreshToken = refreshRequest.getRefreshToken();
+  public ResponseEntity<JwtAuthResponseDto> refreshToken(@Validated @RequestBody RefreshTokenRequestDto refreshRequest) {
+    String refreshToken = refreshRequest.getRefreshToken();
 
-      log.debug("Attempting to refresh token");
+    log.debug("Attempting to refresh token");
 
-      // 1. Verifica che sia effettivamente un refresh token
-      if (!jwtService.isRefreshToken(refreshToken)) {
-        log.warn("Invalid token type - not a refresh token");
-        return ResponseEntity.badRequest()
-                 .body(ErrorResponse.builder()
-                         .status(BAD_REQUEST_STATUS.value())
-                         .error(BAD_REQUEST_STATUS.getReasonPhrase())
-                         .message("Il token fornito non è un refresh token valido")
-                         .timestamp(Instant.now())
-                         .build());
-      }
-
-      // 2. Estrai username dal refresh token
-      String username = jwtService.extractUsername(refreshToken);
-
-      // 3. Carica i dettagli dell'utente
-      UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-      // 4. Valida il refresh token
-      if (!jwtService.isTokenValid(refreshToken, userDetails)) {
-        log.warn("Refresh token validation failed for user: {}", username);
-        return ResponseEntity.status(UNAUTHORIZED_STATUS)
-                 .body(ErrorResponse.builder()
-                         .status(UNAUTHORIZED_STATUS.value())
-                         .error(UNAUTHORIZED_STATUS.getReasonPhrase())
-                         .message("Refresh token non valido o scaduto")
-                         .timestamp(Instant.now())
-                         .build());
-      }
-
-      // 5. Genera un NUOVO access token
-      String newAccessToken = jwtService.generateAccessToken(userDetails);
-
-      // 6. Costruisci la risposta (refresh token rimane lo stesso)
-      JwtAuthResponse response =
-        JwtAuthResponse.builder()
-          .accessToken(newAccessToken)
-          .refreshToken(refreshToken)  // Stesso refresh token
-          .tokenType("Bearer")
-          .username(userDetails.getUsername())
-          .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
-          .accessTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
-          .refreshTokenExpiresAt(jwtService.extractExpiration(refreshToken).toInstant())
-          .build();
-
-      log.info("Token refreshed successfully for user: {}", username);
-      return ResponseEntity.ok(response);
-
-    } catch (Exception e) {
-      log.error("Error refreshing token", e);
-      return ResponseEntity.status(UNAUTHORIZED_STATUS)
-               .body(ErrorResponse.builder()
-                       .status(UNAUTHORIZED_STATUS.value())
-                       .error(UNAUTHORIZED_STATUS.getReasonPhrase())
-                       .message("Errore durante il rinnovo del token")
-                       .timestamp(Instant.now())
-                       .build());
+    // 1. Verify that it is actually a refresh token
+    if (!jwtService.isRefreshToken(refreshToken)) {
+      final String errorMessage = "Invalid token type - not a refresh token";
+      log.warn(errorMessage);
+      throw new InternalAuthenticationServiceException(errorMessage);
     }
+
+    // 2. Extract username from refresh token
+    String username = jwtService.extractUsername(refreshToken);
+
+    // 3. Load user details
+    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+    // 4. Validate refresh token
+    if (!jwtService.isTokenValid(refreshToken, userDetails)) {
+      final String errorMessage = "Refresh token validation failed for user: " + username;
+      log.warn(errorMessage);
+      throw new CredentialsExpiredException(errorMessage);
+    }
+
+    // 5. Generate a NEW access token
+    String newAccessToken = jwtService.generateAccessToken(userDetails);
+
+    // 6. Build response (refresh token remains the same)
+    JwtAuthResponseDto response =
+      JwtAuthResponseDto.builder()
+        .accessToken(newAccessToken)
+        .refreshToken(refreshToken)  // Same refresh token
+        .tokenType("Bearer")
+        .username(userDetails.getUsername())
+        .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
+        .accessTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
+        .refreshTokenExpiresAt(jwtService.extractExpiration(refreshToken).toInstant())
+        .build();
+
+    log.info("Token refreshed successfully for user: {}", username);
+    return ResponseEntity.ok(response);
   }
 
   /**
-   * Endpoint per il logout.
-   * Nota: Con JWT stateless, il logout è gestito principalmente lato client
-   * (rimuovendo i token dal localStorage/sessionStorage).
+   * Endpoint for logout.
+   * Note: With stateless JWT, logout is primarily handled client-side.
    * <p>
-   * Questo endpoint serve per:
-   * - Logging dell'evento di logout
-   * - Eventuale blacklist del token (implementazione futura)
-   * - Clear del SecurityContext
+   * This endpoint serves for:
+   * - Logging the logout event
+   * - Potential token blacklisting (future implementation)
+   * - Clearing the SecurityContext
    *
-   * @return conferma di logout
+   * @return logout confirmation message
    */
   @PostMapping("/logout")
-  @Operation(summary = "Logout utente",
-    description = "Effettua il logout. Il client deve rimuovere i token JWT salvati. Il server pulisce il SecurityContext.")
-  @ApiResponse(responseCode = "200", description = "Logout effettuato con successo")
-  public ResponseEntity<ResponseDto> logout() {
+  @Operation(summary = "User Logout",
+    description = "Performs logout. The client must remove saved JWT tokens. The server clears the SecurityContext.")
+  @ApiResponse(responseCode = "200", description = "Logout successful")
+  public ResponseEntity<String> logout() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
     if (authentication != null && authentication.isAuthenticated()) {
@@ -232,47 +186,9 @@ public class AuthController {
       // Clear SecurityContext
       SecurityContextHolder.clearContext();
 
-      return ResponseEntity.ok().body(new LogoutResponse("Logout effettuato con successo"));
+      return ResponseEntity.ok().body("Logout successful");
     }
 
-    return ResponseEntity.ok().body(new LogoutResponse("Nessuna sessione attiva"));
-  }
-
-  /**
-   * Endpoint per ottenere informazioni sull'utente autenticato.
-   * Richiede un access token valido.
-   *
-   * @return informazioni sull'utente corrente
-   */
-  @GetMapping("/me")
-  @Operation(summary = "Informazioni utente corrente",
-    description = "Restituisce le informazioni dell'utente autenticato tramite il token JWT.")
-  @ApiResponse(responseCode = "200", description = "Informazioni utente recuperate con successo",
-    content = @Content(schema = @Schema(implementation = UserInfoResponse.class)))
-  @ApiResponse(responseCode = "401", description = "Non autenticato - token mancante o non valido",
-    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-  public ResponseEntity<ResponseDto> getCurrentUser() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-    if (authentication == null || !authentication.isAuthenticated()) {
-      return ResponseEntity.status(UNAUTHORIZED_STATUS)
-               .body(ErrorResponse.builder()
-                       .status(UNAUTHORIZED_STATUS.value())
-                       .error(UNAUTHORIZED_STATUS.getReasonPhrase())
-                       .message("Utente non autenticato")
-                       .timestamp(Instant.now())
-                       .build());
-    }
-
-    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-    assert userDetails != null;
-    UserInfoResponse response = UserInfoResponse.builder()
-                                  .username(userDetails.getUsername())
-                                  .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
-                                  .authenticated(true)
-                                  .build();
-
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok().body("No active session");
   }
 }
